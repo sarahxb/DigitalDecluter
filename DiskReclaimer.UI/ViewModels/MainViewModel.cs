@@ -88,7 +88,11 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            var result = await _scanOrchestrator.ScanAsync(RootPath, _scanCancellation.Token);
+            var progress = new Progress<ScanProgress>(p => StatusMessage = p.CurrentDirectory is null
+                ? $"Scanning {RootPath}... {p.FilesScanned:N0} files found"
+                : $"Scanning {RootPath}... {p.FilesScanned:N0} files found (in {p.CurrentDirectory})");
+
+            var result = await _scanOrchestrator.ScanAsync(RootPath, progress, _scanCancellation.Token);
 
             foreach (var file in result.Categorization.Files)
             {

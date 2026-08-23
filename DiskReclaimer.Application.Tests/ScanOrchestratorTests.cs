@@ -14,7 +14,7 @@ public sealed class ScanOrchestratorTests
 {
     private sealed class FakeFileScanner(IReadOnlyList<FileRecord> files) : IFileScanner
     {
-        public Task<IReadOnlyList<FileRecord>> ScanAsync(string rootPath, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<FileRecord>> ScanAsync(string rootPath, IProgress<ScanProgress>? progress, CancellationToken cancellationToken) =>
             Task.FromResult(files);
     }
 
@@ -83,7 +83,7 @@ public sealed class ScanOrchestratorTests
 
         var orchestrator = BuildOrchestrator(files, [], 1000, new FakeScanHistoryStore());
 
-        var result = await orchestrator.ScanAsync(@"C:\data", CancellationToken.None);
+        var result = await orchestrator.ScanAsync(@"C:\data", null, CancellationToken.None);
 
         Assert.Equal(2, result.Categorization.Files.Count);
         var recommendation = Assert.Single(result.Recommendations);
@@ -99,7 +99,7 @@ public sealed class ScanOrchestratorTests
 
         var orchestrator = BuildOrchestrator(files, rules, 1000, new FakeScanHistoryStore());
 
-        var result = await orchestrator.ScanAsync(@"C:\Windows", CancellationToken.None);
+        var result = await orchestrator.ScanAsync(@"C:\Windows", null, CancellationToken.None);
 
         Assert.Empty(result.Categorization.Files);
         Assert.Empty(result.Recommendations);
@@ -116,7 +116,7 @@ public sealed class ScanOrchestratorTests
         var historyStore = new FakeScanHistoryStore();
 
         var orchestrator = BuildOrchestrator(files, [], 1000, historyStore);
-        await orchestrator.ScanAsync(@"C:\data", CancellationToken.None);
+        await orchestrator.ScanAsync(@"C:\data", null, CancellationToken.None);
 
         var entry = Assert.Single(historyStore.RecordedEntries);
         Assert.Equal(@"C:\data", entry.RootPath);
@@ -134,7 +134,7 @@ public sealed class ScanOrchestratorTests
         var categorizer = new Categorizer([], [new NodeModulesFolderPatternRule()]);
 
         var orchestrator = BuildOrchestrator(files, [], 1000, new FakeScanHistoryStore(), categorizer);
-        var result = await orchestrator.ScanAsync(@"C:\proj", CancellationToken.None);
+        var result = await orchestrator.ScanAsync(@"C:\proj", null, CancellationToken.None);
 
         var insight = Assert.Single(result.Insights);
         Assert.Equal(@"C:\proj\node_modules", insight.FolderPath);
@@ -149,7 +149,7 @@ public sealed class ScanOrchestratorTests
 
         var orchestrator = BuildOrchestrator(files, [], 1000, new ThrowingScanHistoryStore());
 
-        var result = await orchestrator.ScanAsync(@"C:\data", CancellationToken.None);
+        var result = await orchestrator.ScanAsync(@"C:\data", null, CancellationToken.None);
 
         Assert.Single(result.Recommendations);
     }

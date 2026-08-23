@@ -13,6 +13,12 @@ Built with .NET 8, C#, and WPF (MVVM).
 **Scanning & categorization**
 - Recursive filesystem scan of any folder or drive, resilient to inaccessible directories and
   reparse points (no symlink cycles)
+- Directory traversal fans out across a worker pool (default 8 concurrent workers) instead of
+  walking one directory at a time — on a large drive, per-directory syscall latency dominates, so
+  overlapping many of them concurrently matters more than raw CPU
+- Live progress during a scan (files found so far, current directory) instead of the UI going quiet
+  until the whole scan finishes
+- Duplicate-file hashing runs in parallel within each same-size candidate group
 - Per-file categorization (Document, Media, Archive, Installer, CodeProject, Log, Temp, SystemJunk, ...)
   via pluggable rules
 - Folder-pattern detection: Git repos, Visual Studio / IntelliJ projects, Docker contexts,
@@ -89,8 +95,8 @@ dotnet run --project DiskReclaimer.UI
 (Or open `DigitalDecluter2.sln` in Rider / Visual Studio and run the `DiskReclaimer.UI` project.)
 
 ### Using the app
-1. **Browse...** to pick a folder or drive to scan, then **Scan**. Progress and results stream into
-   the tabs below; **Cancel** stops an in-progress scan.
+1. **Browse...** to pick a folder or drive to scan, then **Scan**. The status line updates live with
+   a running file count while the scan is in progress; **Cancel** stops it early.
 2. **Recommendations** tab — the prioritized, confidence-scored list of what could be removed and
    why. Click **Reveal** on any row to open it in Explorer, or **Delete** to send it to the Recycle
    Bin (after a confirmation prompt showing the path and estimated space reclaimed).
@@ -149,8 +155,7 @@ FileScanner (Infrastructure)
 Next up, roughly in order:
 1. A real installer (WiX/MSIX) with Start Menu entry and uninstall support, on top of today's
    single-file publish
-2. Performance passes for very large drives (progress reporting during long scans, parallelism)
-3. Revisit the full-rescan model vs. an incremental index for repeat scans of the same root
+2. Revisit the full-rescan model vs. an incremental index for repeat scans of the same root
 
 Further out (originally scoped as post-v1): photo organization, iCloud/iPhone integration, richer
 backup/export, AI-assisted recommendations.

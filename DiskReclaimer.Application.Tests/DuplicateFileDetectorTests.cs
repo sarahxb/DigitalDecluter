@@ -111,4 +111,29 @@ public sealed class DuplicateFileDetectorTests : IDisposable
         var groupIds = findings.Select(f => f.DuplicateGroupId).Distinct().ToList();
         Assert.Equal(2, groupIds.Count);
     }
+
+    [Fact]
+    public void Detect_CorrectlyGroupsManyFiles_WhenHashingRunsInParallel()
+    {
+        // Large enough that the size group's parallel hashing spans multiple worker threads, to catch
+        // any races in the concurrent hash-computation path rather than just the sequential one.
+        const int groupCount = 10;
+        const int filesPerGroup = 4;
+        var allFiles = new List<CategorizedFile>();
+
+        for (var groupIndex = 0; groupIndex < groupCount; groupIndex++)
+        {
+            var content = $"group-{groupIndex}-content-padded-out-a-bit-for-realism";
+            for (var fileIndex = 0; fileIndex < filesPerGroup; fileIndex++)
+            {
+                allFiles.Add(WriteFile($"g{groupIndex}f{fileIndex}.txt", content));
+            }
+        }
+
+        var findings = new DuplicateFileDetector().Detect(allFiles, []).Cast<DuplicateFinding>().ToList();
+
+        Assert.Equal(groupCount * filesPerGroup, findings.Count);
+        Assert.Equal(groupCount, findings.Select(f => f.DuplicateGroupId).Distinct().Count());
+        Assert.All(findings, f => Assert.Equal(filesPerGroup - 1, f.OtherPaths.Count));
+    }
 }

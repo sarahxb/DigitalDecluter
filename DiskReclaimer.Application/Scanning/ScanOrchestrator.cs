@@ -41,11 +41,11 @@ public sealed class ScanOrchestrator : IScanOrchestrator
         _logger = logger;
     }
 
-    public async Task<ScanResult> ScanAsync(string rootPath, CancellationToken cancellationToken)
+    public async Task<ScanResult> ScanAsync(string rootPath, IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
     {
         var scanStartedUtc = DateTimeOffset.UtcNow;
 
-        var files = await _fileScanner.ScanAsync(rootPath, cancellationToken);
+        var files = await _fileScanner.ScanAsync(rootPath, progress, cancellationToken);
         var categorized = _categorizer.Categorize(files);
         var exclusionRules = await _exclusionRuleProvider.GetRulesAsync();
         var scoped = ExclusionFilter.Apply(categorized, exclusionRules);

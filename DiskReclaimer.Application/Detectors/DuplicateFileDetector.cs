@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Hashing;
 using DiskReclaimer.Core.Interfaces;
 using DiskReclaimer.Core.Models;
@@ -8,7 +9,9 @@ namespace DiskReclaimer.Application.Detectors;
 /// Finds files with byte-identical content via a three-stage pipeline: group by size (cheap, cuts the
 /// candidate pool drastically), then by content hash within each size group, then confirm every
 /// hash match with a byte-for-byte comparison in case of a hash collision. Unlike other detectors,
-/// this one has to read file content off disk, not just the metadata the scanner already collected.
+/// this one has to read file content off disk, not just the metadata the scanner already collected —
+/// hashing within a size group happens in parallel since it's the expensive, embarrassingly parallel
+/// part of the pipeline.
 /// </summary>
 public sealed class DuplicateFileDetector : IRecommendationDetector
 {
@@ -28,10 +31,8 @@ public sealed class DuplicateFileDetector : IRecommendationDetector
 
         foreach (var sizeGroup in sizeGroups)
         {
-            var hashGroups = sizeGroup
-                .Select(f => (File: f, Hash: TryComputeHash(f.Record.FullPath)))
-                .Where(x => x.Hash is not null)
-                .GroupBy(x => x.Hash!.Value)
+            var hashGroups = ComputeHashesInParallel(sizeGroup)
+                .GroupBy(x => x.Hash)
                 .Where(g => g.Count() > 1);
 
             foreach (var hashGroup in hashGroups)
@@ -57,6 +58,22 @@ public sealed class DuplicateFileDetector : IRecommendationDetector
                 }
             }
         }
+    }
+
+    private static List<(CategorizedFile File, ulong Hash)> ComputeHashesInParallel(IEnumerable<CategorizedFile> candidates)
+    {
+        var hashed = new ConcurrentBag<(CategorizedFile, ulong)>();
+
+        Parallel.ForEach(candidates, candidate =>
+        {
+            var hash = TryComputeHash(candidate.Record.FullPath);
+            if (hash is not null)
+            {
+                hashed.Add((candidate, hash.Value));
+            }
+        });
+
+        return hashed.ToList();
     }
 
     /// <summary>Partitions same-size, same-hash candidates into clusters of genuinely identical content.</summary>
