@@ -1,4 +1,5 @@
 using DiskReclaimer.Core.Interfaces;
+using DiskReclaimer.Infrastructure.Deletion;
 using DiskReclaimer.Infrastructure.Exclusions;
 using DiskReclaimer.Infrastructure.Persistence;
 using DiskReclaimer.Infrastructure.Scanning;
@@ -15,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IExclusionRuleProvider>(sp =>
             new ExclusionRuleProvider(exclusionConfigFilePath, sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ExclusionRuleProvider>>()));
         services.AddSingleton<IScanHistoryStore>(_ => new SqliteScanHistoryStore(scanHistoryDatabaseFilePath));
+        services.AddSingleton<IRecycleBinService, RecycleBinService>();
 
         return services;
     }

@@ -36,9 +36,14 @@
                         <DataGridTemplateColumn Header="" Width="Auto">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Content="Reveal" Padding="6,0"
-                                            Command="{Binding DataContext.RevealInExplorerCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                            CommandParameter="{Binding TargetPath}" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Reveal" Padding="6,0"
+                                                Command="{Binding DataContext.RevealInExplorerCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding TargetPath}" />
+                                        <Button Content="Delete" Padding="6,0" Margin="4,0,0,0" Foreground="DarkRed"
+                                                Command="{Binding DataContext.DeleteRecommendationCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

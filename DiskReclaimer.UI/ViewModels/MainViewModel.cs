@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DiskReclaimer.Application.Export;
@@ -15,6 +16,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IScanOrchestrator _scanOrchestrator;
     private readonly IScanHistoryStore _scanHistoryStore;
     private readonly IExclusionRuleProvider _exclusionRuleProvider;
+    private readonly IRecycleBinService _recycleBinService;
     private readonly ILogger<MainViewModel> _logger;
     private CancellationTokenSource? _scanCancellation;
 
@@ -50,11 +52,13 @@ public sealed partial class MainViewModel : ObservableObject
         IScanOrchestrator scanOrchestrator,
         IScanHistoryStore scanHistoryStore,
         IExclusionRuleProvider exclusionRuleProvider,
+        IRecycleBinService recycleBinService,
         ILogger<MainViewModel> logger)
     {
         _scanOrchestrator = scanOrchestrator;
         _scanHistoryStore = scanHistoryStore;
         _exclusionRuleProvider = exclusionRuleProvider;
+        _recycleBinService = recycleBinService;
         _logger = logger;
     }
 
@@ -275,5 +279,46 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         return null;
+    }
+
+    [RelayCommand]
+    private async Task DeleteRecommendationAsync(Recommendation? recommendation)
+    {
+        if (recommendation is null)
+        {
+            return;
+        }
+
+        var confirmed = MessageBox.Show(
+            $"Move this to the Recycle Bin?\n\n{recommendation.TargetPath}\n\n" +
+            $"Estimated space reclaimed: {recommendation.ReclaimableBytes:N0} bytes.",
+            "Confirm delete",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            var deleted = await _recycleBinService.DeleteAsync(recommendation.TargetPath, CancellationToken.None);
+            if (deleted)
+            {
+                Recommendations.Remove(recommendation);
+                StatusMessage = $"Moved to Recycle Bin: {recommendation.TargetPath}";
+            }
+            else
+            {
+                StatusMessage = $"Nothing to delete — {recommendation.TargetPath} no longer exists.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete {Path}", recommendation.TargetPath);
+            StatusMessage = $"Failed to delete: {ex.Message}";
+        }
     }
 }

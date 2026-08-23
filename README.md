@@ -1,7 +1,8 @@
 # Disk Reclaimer
 
 A Windows desktop app that scans your drives and **recommends** files and folders that are safe to
-remove. It never deletes anything on its own — it's a research tool, not a cleaner.
+remove. Nothing is ever deleted automatically — every delete requires an explicit, per-item
+confirmation, and always goes through the Recycle Bin, never a permanent delete.
 
 Built with .NET 8, C#, and WPF (MVVM).
 
@@ -49,12 +50,19 @@ Built with .NET 8, C#, and WPF (MVVM).
 - Every scan's summary (root path, timing, file/folder/recommendation counts, total reclaimable
   bytes) is recorded to a local SQLite database and browsable in a History tab
 
+**Delete workflow**
+- **Delete** button on each Recommendations row — shows an explicit confirmation dialog (path +
+  estimated space reclaimed) before doing anything
+- Deleting always sends to the Recycle Bin (`Microsoft.VisualBasic.FileIO`, `RecycleOption.SendToRecycleBin`)
+  — never a permanent delete, and always recoverable through Windows' own Recycle Bin UI
+- If the target has vanished since the scan ran (e.g. deleted by hand in the meantime), the app
+  reports that instead of erroring
+
 **Safety**
-- Recommendations only — the app never deletes or moves anything automatically
+- Nothing is ever deleted without that explicit per-item confirmation, and deletion is never
+  anything other than a Recycle Bin move
 
 ### Not yet implemented
-- Actually deleting anything (even routed through the Recycle Bin with confirmation — the original
-  design intent, still just a recommendation list today)
 - Packaging/installer for distribution (run from source or a dev build only)
 - Incremental/always-on indexing (every scan is a full rescan of the chosen root)
 - Photo organization, iPhone/iCloud integration, backup/export beyond CSV, AI-assisted
@@ -79,7 +87,8 @@ dotnet run --project DiskReclaimer.UI
 1. **Browse...** to pick a folder or drive to scan, then **Scan**. Progress and results stream into
    the tabs below; **Cancel** stops an in-progress scan.
 2. **Recommendations** tab — the prioritized, confidence-scored list of what could be removed and
-   why. Click **Reveal** on any row to open it in Explorer.
+   why. Click **Reveal** on any row to open it in Explorer, or **Delete** to send it to the Recycle
+   Bin (after a confirmation prompt showing the path and estimated space reclaimed).
 3. **Files** / **Detected Folders** tabs — the full scoped file list and every detected project/junk
    folder, for browsing independent of any recommendation.
 4. **Insights** tab — "what do I have" per detected folder (size, file count, category breakdown),
@@ -125,10 +134,9 @@ FileScanner (Infrastructure)
 ## Roadmap
 
 Next up, roughly in order:
-1. A real delete workflow — Recycle Bin, explicit per-item confirmation
-2. Packaging (installer / single-file publish) for distribution outside a dev environment
-3. Performance passes for very large drives (progress reporting during long scans, parallelism)
-4. Revisit the full-rescan model vs. an incremental index for repeat scans of the same root
+1. Packaging (installer / single-file publish) for distribution outside a dev environment
+2. Performance passes for very large drives (progress reporting during long scans, parallelism)
+3. Revisit the full-rescan model vs. an incremental index for repeat scans of the same root
 
 Further out (originally scoped as post-v1): photo organization, iCloud/iPhone integration, richer
 backup/export, AI-assisted recommendations.
