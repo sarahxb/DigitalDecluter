@@ -1,0 +1,16 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# Test results
+TestResults/
+
+# Local, machine-specific config (not portable across checkouts)
+.mcp.json
+.claude/settings.local.json
