@@ -7,7 +7,8 @@ namespace DiskReclaimer.Infrastructure.Exclusions;
 
 /// <summary>
 /// Supplies the exclusion rule list: a hardcoded system floor (Windows/Program Files/AppData system
-/// folders) that no detector can override, plus user-added rules read from a JSON config file.
+/// folders) that no detector can override, plus user-added rules read from and written to a JSON
+/// config file.
 /// </summary>
 public sealed class ExclusionRuleProvider : IExclusionRuleProvider
 {
@@ -27,6 +28,26 @@ public sealed class ExclusionRuleProvider : IExclusionRuleProvider
         var rules = new List<ExclusionRule>(BuiltInRules);
         rules.AddRange(await LoadUserRulesAsync());
         return rules;
+    }
+
+    public async Task AddUserRuleAsync(ExclusionRule rule, CancellationToken cancellationToken)
+    {
+        if (rule.IsSystemFloor)
+        {
+            throw new ArgumentException("Cannot add a rule marked as system floor through this method.", nameof(rule));
+        }
+
+        var userRules = (await LoadUserRulesAsync()).ToList();
+        userRules.RemoveAll(r => r.PathPattern.Equals(rule.PathPattern, StringComparison.OrdinalIgnoreCase));
+        userRules.Add(rule);
+        await SaveUserRulesAsync(userRules, cancellationToken);
+    }
+
+    public async Task RemoveUserRuleAsync(string pathPattern, CancellationToken cancellationToken)
+    {
+        var userRules = (await LoadUserRulesAsync()).ToList();
+        userRules.RemoveAll(r => r.PathPattern.Equals(pathPattern, StringComparison.OrdinalIgnoreCase));
+        await SaveUserRulesAsync(userRules, cancellationToken);
     }
 
     private async Task<IReadOnlyList<ExclusionRule>> LoadUserRulesAsync()
@@ -49,6 +70,22 @@ public sealed class ExclusionRuleProvider : IExclusionRuleProvider
             _logger.LogWarning(ex, "Failed to read user exclusion config at {Path}; ignoring user rules", _configFilePath);
             return [];
         }
+    }
+
+    private async Task SaveUserRulesAsync(IReadOnlyList<ExclusionRule> userRules, CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(_configFilePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var entries = userRules
+            .Select(r => new UserExclusionEntry { PathPattern = r.PathPattern, Reason = r.Reason })
+            .ToList();
+
+        var json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(_configFilePath, json, cancellationToken);
     }
 
     private static List<ExclusionRule> BuildBuiltInRules()

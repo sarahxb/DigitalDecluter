@@ -10,6 +10,7 @@
     <Window.Resources>
         <converters:StringListToTextConverter x:Key="StringListToTextConverter" />
         <converters:CategoryBreakdownToTextConverter x:Key="CategoryBreakdownToTextConverter" />
+        <converters:BooleanToSourceTextConverter x:Key="BooleanToSourceTextConverter" />
     </Window.Resources>
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -121,6 +122,56 @@
                         <DataGridTextColumn Header="Reclaimable (bytes)" Binding="{Binding TotalReclaimableBytes}" Width="*" />
                     </DataGrid.Columns>
                 </DataGrid>
+            </TabItem>
+            <TabItem Header="Exclusions">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+                        <TextBox Text="{Binding NewExclusionPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="350" VerticalContentAlignment="Center"
+                                 ToolTip="Exact path, or a glob pattern like C:\data\*.tmp" />
+                        <Button Content="Browse..." Click="OnBrowseExclusionPathClicked" Margin="8,0,0,0" Padding="8,2" />
+                        <TextBox Text="{Binding NewExclusionReason, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="200" VerticalContentAlignment="Center" Margin="8,0,0,0"
+                                 ToolTip="Reason (optional)" />
+                        <Button Content="Add Rule" Command="{Binding AddExclusionRuleCommand}" Margin="8,0,0,0" Padding="8,2" />
+                    </StackPanel>
+
+                    <DataGrid ItemsSource="{Binding ExclusionRules}" AutoGenerateColumns="False" IsReadOnly="True" Grid.Row="1">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Remove" Padding="6,0"
+                                                Command="{Binding DataContext.RemoveExclusionRuleCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSystemFloor}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Path / Pattern" Binding="{Binding PathPattern}" Width="3*" />
+                            <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="2*" />
+                            <DataGridTextColumn Header="Source" Width="*">
+                                <DataGridTextColumn.Binding>
+                                    <Binding Path="IsSystemFloor" Converter="{StaticResource BooleanToSourceTextConverter}" />
+                                </DataGridTextColumn.Binding>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </TabItem>
         </TabControl>
     </Grid>

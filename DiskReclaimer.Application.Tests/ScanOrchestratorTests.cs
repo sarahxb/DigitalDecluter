@@ -21,6 +21,10 @@ public sealed class ScanOrchestratorTests
     private sealed class FakeExclusionRuleProvider(IReadOnlyList<ExclusionRule> rules) : IExclusionRuleProvider
     {
         public Task<IReadOnlyList<ExclusionRule>> GetRulesAsync() => Task.FromResult(rules);
+
+        public Task AddUserRuleAsync(ExclusionRule rule, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task RemoveUserRuleAsync(string pathPattern, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class FakeScanHistoryStore : IScanHistoryStore

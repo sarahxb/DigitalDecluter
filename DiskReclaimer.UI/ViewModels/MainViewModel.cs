@@ -14,6 +14,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IScanOrchestrator _scanOrchestrator;
     private readonly IScanHistoryStore _scanHistoryStore;
+    private readonly IExclusionRuleProvider _exclusionRuleProvider;
     private readonly ILogger<MainViewModel> _logger;
     private CancellationTokenSource? _scanCancellation;
 
@@ -37,15 +38,32 @@ public sealed partial class MainViewModel : ObservableObject
 
     public ObservableCollection<ScanHistoryEntry> History { get; } = [];
 
-    public MainViewModel(IScanOrchestrator scanOrchestrator, IScanHistoryStore scanHistoryStore, ILogger<MainViewModel> logger)
+    public ObservableCollection<ExclusionRule> ExclusionRules { get; } = [];
+
+    [ObservableProperty]
+    private string _newExclusionPath = string.Empty;
+
+    [ObservableProperty]
+    private string _newExclusionReason = string.Empty;
+
+    public MainViewModel(
+        IScanOrchestrator scanOrchestrator,
+        IScanHistoryStore scanHistoryStore,
+        IExclusionRuleProvider exclusionRuleProvider,
+        ILogger<MainViewModel> logger)
     {
         _scanOrchestrator = scanOrchestrator;
         _scanHistoryStore = scanHistoryStore;
+        _exclusionRuleProvider = exclusionRuleProvider;
         _logger = logger;
     }
 
-    /// <summary>Loads scan history for display; called once the window is up so a slow DB read never blocks startup.</summary>
-    public async Task InitializeAsync() => await RefreshHistoryAsync();
+    /// <summary>Loads scan history and exclusion rules for display; called once the window is up so a slow read never blocks startup.</summary>
+    public async Task InitializeAsync()
+    {
+        await RefreshHistoryAsync();
+        await RefreshExclusionRulesAsync();
+    }
 
     [RelayCommand(CanExecute = nameof(CanScan))]
     private async Task ScanAsync()
@@ -130,6 +148,71 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void CancelScan() => _scanCancellation?.Cancel();
+
+    [RelayCommand]
+    private async Task AddExclusionRuleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewExclusionPath))
+        {
+            StatusMessage = "Enter a path or pattern to exclude first.";
+            return;
+        }
+
+        try
+        {
+            var reason = string.IsNullOrWhiteSpace(NewExclusionReason) ? "User-defined exclusion" : NewExclusionReason;
+            var rule = new ExclusionRule(NewExclusionPath, reason, IsSystemFloor: false);
+            await _exclusionRuleProvider.AddUserRuleAsync(rule, CancellationToken.None);
+
+            NewExclusionPath = string.Empty;
+            NewExclusionReason = string.Empty;
+            await RefreshExclusionRulesAsync();
+            StatusMessage = $"Added exclusion rule for {rule.PathPattern}.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add exclusion rule for {PathPattern}", NewExclusionPath);
+            StatusMessage = $"Failed to add exclusion rule: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RemoveExclusionRuleAsync(ExclusionRule? rule)
+    {
+        if (rule is null || rule.IsSystemFloor)
+        {
+            return;
+        }
+
+        try
+        {
+            await _exclusionRuleProvider.RemoveUserRuleAsync(rule.PathPattern, CancellationToken.None);
+            await RefreshExclusionRulesAsync();
+            StatusMessage = $"Removed exclusion rule for {rule.PathPattern}.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove exclusion rule for {PathPattern}", rule.PathPattern);
+            StatusMessage = $"Failed to remove exclusion rule: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshExclusionRulesAsync()
+    {
+        try
+        {
+            var rules = await _exclusionRuleProvider.GetRulesAsync();
+            ExclusionRules.Clear();
+            foreach (var rule in rules)
+            {
+                ExclusionRules.Add(rule);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load exclusion rules");
+        }
+    }
 
     public void ExportRecommendationsToCsv(string filePath)
     {

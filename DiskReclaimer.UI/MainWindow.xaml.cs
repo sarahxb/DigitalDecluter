@@ -40,4 +40,13 @@ public partial class MainWindow : Window
             _viewModel.ExportRecommendationsToCsv(dialog.FileName);
         }
     }
+
+    private void OnBrowseExclusionPathClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Select a folder to exclude" };
+        if (dialog.ShowDialog() == true)
+        {
+            _viewModel.NewExclusionPath = dialog.FolderName;
+        }
+    }
 }
