@@ -21,4 +21,11 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AssemblyTitle>Disk Reclaimer</AssemblyTitle>
+    <Product>Disk Reclaimer</Product>
+    <Description>Scans drives and recommends files/folders safe to remove. Never deletes automatically.</Description>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
 </Project>

@@ -62,8 +62,13 @@ Built with .NET 8, C#, and WPF (MVVM).
 - Nothing is ever deleted without that explicit per-item confirmation, and deletion is never
   anything other than a Recycle Bin move
 
+**Distribution**
+- `dotnet publish` profile producing a single, self-contained `DiskReclaimer.UI.exe` — runs on a
+  machine with no .NET runtime installed, no separate installer needed
+
 ### Not yet implemented
-- Packaging/installer for distribution (run from source or a dev build only)
+- A true installer (Start Menu entry, uninstall registration) — today's packaging is a standalone
+  single-file executable, not an MSI/MSIX
 - Incremental/always-on indexing (every scan is a full rescan of the chosen root)
 - Photo organization, iPhone/iCloud integration, backup/export beyond CSV, AI-assisted
   recommendations (explicitly out of scope for v1)
@@ -109,6 +114,14 @@ The app stores its local config, database, and logs under `%LocalAppData%\DiskRe
 dotnet test DigitalDecluter2.sln
 ```
 
+### Producing a standalone build
+```
+dotnet publish DiskReclaimer.UI\DiskReclaimer.UI.csproj -c Release -p:PublishProfile=win-x64
+```
+Produces `DiskReclaimer.UI\bin\Release\net8.0-windows\publish\win-x64\DiskReclaimer.UI.exe` — a
+single, self-contained (~150 MB) executable that runs standalone, with no .NET runtime install
+required on the target machine. Copy that one file anywhere and run it.
+
 ## Architecture
 
 Layered, pluggable-detector design:
@@ -134,7 +147,8 @@ FileScanner (Infrastructure)
 ## Roadmap
 
 Next up, roughly in order:
-1. Packaging (installer / single-file publish) for distribution outside a dev environment
+1. A real installer (WiX/MSIX) with Start Menu entry and uninstall support, on top of today's
+   single-file publish
 2. Performance passes for very large drives (progress reporting during long scans, parallelism)
 3. Revisit the full-rescan model vs. an incremental index for repeat scans of the same root
 
